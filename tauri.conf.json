@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0",
+  "productName": "memo",
+  "version": "1.0.0",
+  "identifier": "memo.notes",
+  "build": {
+    "frontendDist": "./src",
+    "devUrl": "./src/index.html"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "memo",
+        "width": 800,
+        "height": 1000,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["windows"],
+    "icon": ["icons/icon.ico"],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "skip"
+      }
+    }
+  }
+}
