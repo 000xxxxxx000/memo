@@ -1,0 +1,8 @@
+[package]
+name = "memo"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2.0", features = ["fs", "dialog", "path"] }
+serde = { version = "1.0", features = ["derive"] }
