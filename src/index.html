@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>memo</title>
+<script type="module">
+import { app, fs, dialog, path } from 'https://cdn.jsdelivr.net/npm/@tauri-apps/api@2.0/+esm'
+window.__tauri = { app, fs, dialog, path }
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,SimSun,serif}
+body{background:#f7f4ee;color:#333;padding:20px;max-width:660px;margin:0 auto}
+.top-bar{
+  display:flex;
+  gap:12px;
+  align-items:flex-end;
+  margin-bottom:8px;
+  padding-bottom:-2px;
+  flex-wrap:wrap
+}
+button{
+  padding:8px 14px;
+  border:1px solid #aaa;
+  background:#fff;
+  border-radius:6px;
+  cursor:pointer
+}
+button:hover{
+  background:#f0ede6
+}
+.sort-wrap{
+  position:relative;
+}
+.sort-menu{
+  position:absolute;
+  top:100%;
+  left:0;
+  margin-top:4px;
+  background:#fff;
+  border:1px solid #aaa;
+  border-radius:6px;
+  z-index:10;
+  display:none;
+  min-width:100px;
+}
+.sort-menu.show{
+  display:block;
+}
+.sort-menu div{
+  padding:8px 14px;
+  cursor:pointer;
+  font-size:11px;
+}
+.sort-menu div:hover{
+  background:#f0ede6
+}
+.file-name{
+  color:#888;
+  font-size:11px;
+}
+.file-link{
+  color:#888;
+  text-decoration:underline;
+  cursor:pointer;
+  font-size:11px;
+}
+.file-link:hover{
+  color:#555
+}
+.status-wrap{
+  width:180px;
+  min-height:14px;
+  display:inline-block;
+  vertical-align:middle;
+  flex-shrink:0;
+}
+.status{
+  display:inline-block;
+  min-height:14px;
+  line-height:14px;
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.status.ok{
+  color:#238b45
+}
+.status.err{
+  color:#c22
+}
+.input-area{margin-top:8px;margin-bottom:20px;position:relative}
+#newInput{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;min-height:80px;font-size:16px}
+.tag-suggest{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccc;
+  border-radius:6px;
+  z-index:20;
+  display:none;
+  min-width:140px;
+  max-height:220px;
+  overflow-y:auto;
+}
+.tag-suggest.show{
+  display:block;
+}
+.tag-suggest-item{
+  padding:7px 12px;
+  cursor:pointer;
+  font-size:14px;
+}
+.tag-suggest-item:hover,.tag-suggest-item.active{
+  background:#f0ede6;
+}
+.card-list{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:16px}
+.card{
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:14px;
+  background:#fff;
+  display:flex;
+  gap:10px;
+  position:relative;
+  align-items:flex-start;
+}
+.card-main{
+  flex:1;
+  min-width:0;
+  padding-right:22px;
+  cursor:pointer;
+}
+.card-content{
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  line-height:1.5;
+  max-height:4.5em;
+  word-break:break-word;
+}
+.card .tag{
+  display:inline-block;
+  background:#e8e4dd;
+  color:#555;
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:12px;
+  margin-bottom:6px;
+}
+.card-time{
+  width:120px;
+  flex-shrink:0;
+  color:#888;
+  font-size:12px;
+  line-height:1.4;
+  text-align:right;
+  white-space:nowrap;
+  padding-right:22px;
+}
+.card .del{
+  position:absolute;
+  top:10px;
+  right:10px;
+  color:#999;
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  user-select:none;
+}
+.modal-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+.modal-mask.show{
+  display:flex;
+}
+.modal-box{
+  background:#fff;
+  border-radius:10px;
+  width:92%;
+  max-width:720px;
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.modal-head{
+  padding:12px 14px;
+  border-bottom:1px solid #eee;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.modal-time{
+  color:#888;
+  font-size:12px;
+}
+.modal-close{
+  cursor:pointer;
+  color:#999;
+  font-size:20px;
+  line-height:1;
+}
+.modal-body{
+  padding:14px;
+  flex:1;
+}
+#editTextarea{
+  width:100%;
+  height:420px;
+  min-height:420px;
+  border:1px solid #ddd;
+  border-radius:6px;
+  padding:10px;
+  font-size:15px;
+  line-height:1.6;
+  white-space:pre-wrap;
+  resize:none;
+}
+.modal-foot{
+  padding:10px 14px;
+  border-top:1px solid #eee;
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.pager{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.pager button{
+  padding:4px 10px;
+}
+.pager button.active{
+  background:#555;
+  color:#fff;
+  border-color:#555
+}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <button id="selectFileBtn">选择md文件</button>
+  <button id="saveBtn">保存 (Ctrl+Enter)</button>
+  <button id="loadBtn">同步 (Alt+Enter)</button>
+  <div class="sort-wrap">
+    <button id="sortBtn">排序</button>
+    <div class="sort-menu" id="sortMenu">
+      <div data-sort="timeDesc">时间_倒序</div>
+      <div data-sort="timeAsc">时间_正序</div>
+      <div data-sort="tag">标签</div>
+    </div>
+  </div>
+  <div class="file-name">当前文件：<span class="file-link" id="fileShow">未选择</span></div>
+  <div class="status-wrap">
+    <div class="status" id="statusEl"></div>
+  </div>
+</div>
+
+<div class="input-area">
+  <textarea id="newInput" placeholder="#标签 内容｜Enter新增卡片"></textarea>
+  <div class="tag-suggest" id="tagSuggest"></div>
+</div>
+
+<div class="card-list" id="cardWrap"></div>
+<div class="pager" id="pagerWrap"></div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-time" id="modalTime"></span>
+      <span class="modal-close" id="modalClose">×</span>
+    </div>
+    <div class="modal-body">
+      <textarea id="editTextarea"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button id="modalSaveBtn">保存修改（Ctrl+Enter）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let fileFullPath = "";
+let cards = [];
+let editingIndex = -1;
+const pageSize = 8;
+let currentPage = 1;
+let currentSort = "timeDesc";
+const CONFIG_NAME = "config.json";
+
+const fileShow = document.getElementById('fileShow');
+const statusEl = document.getElementById('statusEl');
+const cardWrap = document.getElementById('cardWrap');
+const pagerWrap = document.getElementById('pagerWrap');
+const newInput = document.getElementById('newInput');
+const modalMask = document.getElementById('modalMask');
+const editTextarea = document.getElementById('editTextarea');
+const modalTime = document.getElementById('modalTime');
+const modalClose = document.getElementById('modalClose');
+const modalSaveBtn = document.getElementById('modalSaveBtn');
+const sortBtn = document.getElementById('sortBtn');
+const sortMenu = document.getElementById('sortMenu');
+const tagSuggest = document.getElementById('tagSuggest');
+let tagSuggestIndex = 0;
+
+const { fs, dialog, path } = window.__tauri;
+
+async function getConfigPath() {
+  const exeDir = await path.appDataDir();
+  return path.join(exeDir, CONFIG_NAME);
+}
+async function loadConfig() {
+  try{
+    const p = await getConfigPath();
+    const txt = await fs.readTextFile(p);
+    const cfg = JSON.parse(txt);
+    if(cfg.path){
+      fileFullPath = cfg.path;
+      fileShow.textContent = await path.basename(fileFullPath);
+      await loadFile();
+    }
+  }catch(e){}
+}
+async function saveConfig() {
+  const p = await getConfigPath();
+  await fs.writeTextFile(p, JSON.stringify({path:fileFullPath},null,2));
+}
+
+function getTimeStr(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  const s = String(d.getSeconds()).padStart(2,'0');
+  return `${y}-${m}-${day} ${h}${mi}${s}`;
+}
+
+function parseMd(text){
+  const arr = [];
+  const lines = text.split(/\r?\n/);
+  let currentItem = null;
+  for(const line of lines){
+    const headMatch = line.match(/【(?:#(\S+))?】【(\d{4}-\d{2}-\d{2} \d{6})】/);
+    if(headMatch){
+      if(currentItem) arr.push(currentItem);
+      currentItem = {
+        tag: headMatch[1] || "",
+        time: headMatch[2],
+        rawContent: ""
+      };
+    }else{
+      if(currentItem !== null){
+        currentItem.rawContent = currentItem.rawContent ? currentItem.rawContent + "\n" + line : line;
+      }
+    }
+  }
+  if(currentItem) arr.push(currentItem);
+  return arr.map(it=>{
+    return { tag: it.tag, content: it.rawContent, time: it.time };
+  })
+}
+
+function stringifyCards(){
+  return cards.map(c=>{
+    const tagPart = c.tag ? `【#${c.tag}】` : `【】`;
+    return `${tagPart}【${c.time}】\n${c.content}`;
+  }).join("\n\n");
+}
+
+function setStatus(text, type){
+  statusEl.textContent = text;
+  statusEl.className = "status " + type;
+  setTimeout(()=>{
+    statusEl.textContent = '';
+    statusEl.className = "status";
+  },1800);
+}
+
+function getAllUniqueTags(){
+  const tagSet = new Set();
+  cards.forEach(c=>{
+    if(c.tag) tagSet.add(c.tag);
+  })
+  return Array.from(tagSet);
+}
+
+function closeTagSuggest(){
+  tagSuggest.classList.remove('show');
+  tagSuggestIndex = 0;
+}
+
+function renderTagSuggest(keyword){
+  const allTags = getAllUniqueTags();
+  const filterTags = allTags.filter(t=>t.toLowerCase().includes(keyword.toLowerCase()));
+  if(filterTags.length === 0){
+    closeTagSuggest();
+    return;
+  }
+  tagSuggest.innerHTML = "";
+  filterTags.forEach((tag,idx)=>{
+    const div = document.createElement('div');
+    div.className = "tag-suggest-item" + (idx === tagSuggestIndex ? " active" : "");
+    div.textContent = tag;
+    div.onclick = ()=>insertTag(tag);
+    tagSuggest.appendChild(div);
+  })
+  tagSuggest.classList.add('show');
+}
+
+function insertTag(tagName){
+  const pos = newInput.selectionStart;
+  const val = newInput.value;
+  const hashPos = val.lastIndexOf('#', pos - 1);
+  if(hashPos === -1) {
+    closeTagSuggest();
+    return;
+  }
+  const newVal = val.substring(0, hashPos) + `#${tagName} ` + val.substring(pos);
+  newInput.value = newVal;
+  const newCursor = hashPos + tagName.length + 2;
+  newInput.selectionStart = newCursor;
+  newInput.selectionEnd = newCursor;
+  newInput.focus();
+  closeTagSuggest();
+}
+
+function checkTagTrigger(){
+  const val = newInput.value;
+  const pos = newInput.selectionStart;
+  const beforeCursor = val.slice(0, pos);
+  const lastHashIdx = beforeCursor.lastIndexOf('#');
+  if(lastHashIdx === -1){
+    closeTagSuggest();
+    return;
+  }
+  const afterHash = beforeCursor.slice(lastHashIdx + 1);
+  if(afterHash.includes(' ')){
+    closeTagSuggest();
+    return;
+  }
+  renderTagSuggest(afterHash);
+}
+
+function sortCards(sortType) {
+  currentSort = sortType;
+  switch(sortType) {
+    case "timeAsc":
+      cards.sort((a,b) => a.time.localeCompare(b.time));
+      break;
+    case "timeDesc":
+      cards.sort((a,b) => b.time.localeCompare(b.time));
+      break;
+    case "tag":
+      cards.sort((a,b) => a.tag.localeCompare(b.tag));
+      break;
+  }
+  currentPage = 1;
+  render();
+  setStatus('排序已切换，记得点保存写入md','ok');
+}
+
+let sortClickTimer = null;
+sortBtn.onclick = (e)=>{
+  e.stopPropagation();
+  sortClickTimer = setTimeout(()=> sortMenu.classList.toggle('show'), 200);
+}
+sortBtn.ondblclick = (e)=>{
+  e.stopPropagation();
+  clearTimeout(sortClickTimer);
+  sortCards("timeDesc");
+  sortMenu.classList.remove('show');
+}
+document.querySelectorAll('.sort-menu div').forEach(el=>{
+  el.onclick = ()=>{
+    sortCards(el.dataset.sort);
+    sortMenu.classList.remove('show');
+  }
+})
+document.addEventListener('click',()=> sortMenu.classList.remove('show'));
+
+function openModal(idx){
+  editingIndex = idx;
+  const item = cards[idx];
+  modalTime.textContent = item.time || '';
+  editTextarea.value = item.content;
+  modalMask.classList.add('show');
+  editTextarea.focus();
+}
+function closeModal(){
+  modalMask.classList.remove('show');
+  editingIndex = -1;
+}
+function saveModalEdit(){
+  if(editingIndex < 0) return;
+  cards[editingIndex].content = editTextarea.value;
+  render();
+  closeModal();
+  setStatus('修改已记录，需要点保存写入md','ok');
+}
+modalSaveBtn.onclick = saveModalEdit;
+modalClose.addEventListener('click', closeModal);
+modalMask.addEventListener('click', e=>{
+  if(e.target === modalMask) closeModal();
+});
+
+function render(){
+  const total = cards.length;
+  const totalPage = Math.ceil(total / pageSize);
+  if(totalPage > 0){
+    if(currentPage > totalPage) currentPage = totalPage;
+    if(currentPage < 1) currentPage = 1;
+  }
+  const start = (currentPage - 1) * pageSize;
+  const pageData = cards.slice(start, start + pageSize);
+
+  cardWrap.innerHTML = "";
+  pageData.forEach((item,idx)=>{
+    const realIdx = start + idx;
+    const div = document.createElement('div');
+    div.className = "card";
+    div.innerHTML = `
+      <div class="card-main" data-i="${realIdx}">
+        ${item.tag ? `<span class="tag">#${item.tag}</span>` : ""}
+        <div class="card-content">${item.content}</div>
+      </div>
+      <div class="card-time">${item.time}</div>
+      <span class="del" data-i="${realIdx}">×</span>
+    `;
+    cardWrap.appendChild(div);
+  })
+  document.querySelectorAll('.del').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const i = Number(el.dataset.i);
+      cards.splice(i,1);
+      render();
+    }
+  })
+  cardWrap.addEventListener('click', e=>{
+    if(e.target.classList.contains('tag')) return;
+    const main = e.target.closest('.card-main');
+    if(!main) return;
+    openModal(Number(main.dataset.i));
+  });
+
+  pagerWrap.innerHTML = "";
+  if(totalPage <= 1) return;
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = "上一页";
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.onclick = ()=>{currentPage--;render()};
+  pagerWrap.appendChild(prevBtn);
+  for(let p=1;p<=totalPage;p++){
+    const btn = document.createElement('button');
+    btn.textContent = p;
+    if(p === currentPage) btn.classList.add('active');
+    btn.onclick = ()=>{currentPage = p;render()};
+    pagerWrap.appendChild(btn);
+  }
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = "下一页";
+  nextBtn.disabled = currentPage === totalPage;
+  nextBtn.onclick = ()=>{currentPage++;render()};
+  pagerWrap.appendChild(nextBtn);
+}
+
+document.getElementById('selectFileBtn').onclick = async ()=>{
+  try{
+    const selected = await dialog.open({
+      filters: [{name:'Markdown', extensions:['md']}]
+    });
+    if(!selected) return;
+    fileFullPath = selected;
+    fileShow.textContent = await path.basename(fileFullPath);
+    await saveConfig();
+    currentPage = 1;
+    await loadFile();
+  }catch(err){
+    setStatus('取消选择','err');
+  }
+}
+fileShow.onclick = async ()=>{
+  if(!fileFullPath) return;
+  try{
+    await navigator.clipboard.writeText(fileFullPath);
+    setStatus('完整路径已复制','ok');
+  }catch(e){
+    setStatus('复制失败','err');
+  }
+}
+async function loadFile(){
+  if(!fileFullPath){
+    setStatus('请先选择md文件','err');
+    return;
+  }
+  try{
+    const text = await fs.readTextFile(fileFullPath);
+    cards = parseMd(text);
+    sortCards(currentSort);
+    setStatus('✓已加载','ok');
+  }catch(err){
+    setStatus('✗读取失败','err');
+  }
+}
+async function saveFile(){
+  if(!fileFullPath){
+    setStatus('请先选择md文件','err');
+    return;
+  }
+  try{
+    const mdText = stringifyCards();
+    await fs.writeTextFile(fileFullPath, mdText);
+    setStatus('✓保存成功写入md','ok');
+  }catch(err){
+    setStatus('✗写入失败','err');
+  }
+}
+
+function addCard(){
+  const val = newInput.value.trim();
+  if(!val) return;
+  const tagMatch = val.match(/^#(\S+)\s+(.*)/);
+  let tag = "", content = val;
+  if(tagMatch){
+    tag = tagMatch[1];
+    content = tagMatch[2];
+  }
+  cards.unshift({ tag, content, time: getTimeStr() });
+  sortCards(currentSort);
+  newInput.value = "";
+}
+
+newInput.addEventListener('input', checkTagTrigger);
+document.addEventListener('keydown',e=>{
+  if(tagSuggest.classList.contains('show')){
+    const allItems = tagSuggest.querySelectorAll('.tag-suggest-item');
+    if(allItems.length > 0){
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        tagSuggestIndex = (tagSuggestIndex + 1) % allItems.length;
+        renderTagSuggest(newInput.value.slice(newInput.value.lastIndexOf('#')+1, newInput.selectionStart));
+      }else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        tagSuggestIndex = (tagSuggestIndex - 1 + allItems.length) % allItems.length;
+        renderTagSuggest(newInput.value.slice(newInput.value.lastIndexOf('#')+1, newInput.selectionStart));
+      }else if(e.key === 'Enter'){
+        e.preventDefault();
+        allItems[tagSuggestIndex].click();
+        return;
+      }else if(e.key === 'Escape'){
+        e.preventDefault();
+        closeTagSuggest();
+      }
+    }
+  }
+  if(e.target === editTextarea && e.ctrlKey && e.key === 'Enter'){
+    e.preventDefault();
+    saveModalEdit();
+    return;
+  }
+  if(e.target === newInput && e.key === 'Enter' && !e.ctrlKey && !e.altKey){
+    if(tagSuggest.classList.contains('show')) return;
+    e.preventDefault();
+    addCard();
+    return;
+  }
+  if(e.ctrlKey && e.key === 'Enter'){
+    e.preventDefault();
+    saveFile();
+    return;
+  }
+  if(e.altKey && e.key === 'Enter'){
+    e.preventDefault();
+    loadFile();
+    return;
+  }
+})
+document.addEventListener('click', e=>{
+  if(!newInput.contains(e.target) && !tagSuggest.contains(e.target)){
+    closeTagSuggest();
+  }
+})
+document.getElementById('saveBtn').onclick = saveFile;
+document.getElementById('loadBtn').onclick = loadFile;
+
+(async ()=>{
+  await loadConfig();
+})();
+</script>
+</body>
+</html>
